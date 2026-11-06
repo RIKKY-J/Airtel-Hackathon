@@ -180,3 +180,4 @@ def load_csv_data():
 if __name__ == "__main__":
     init_db()
     load_csv_data()
+
