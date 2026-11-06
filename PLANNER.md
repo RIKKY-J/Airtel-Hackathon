@@ -1,425 +1,432 @@
-# Project Udyam Digital — Software Engineering Blueprint & Planner
+# Project Udyam Digital — Master Software Engineering Blueprint & Planner
 
-**Target:** Enterprise MSME Acquisition, Smart KYC & Fulfilment Platform  
-**Language & Tech Stack:** 100% TypeScript (Next.js + Node.js/Express)  
-**Version:** 2.1.0  
-**Focus:** Pure Software Engineering & Implementation  
+**Product:** Digital-first MSME Acquisition, AI Advisor, Smart KYC, Quotation & Fulfilment Platform  
+**Target:** Accel YTL Hackathon 2026 — Enterprise Track A  
+**Architecture:** TypeScript Modular Monolith (Next.js App Router + Route Handlers)  
+**Version:** 3.0.0 (Production-Ready Spec)  
 
 ---
 
-## 1. Concrete Technology Stack
+## 1. Product Definition & Core Business Constraints
 
-| Layer | Technology | Purpose |
+Project Udyam Digital is a mobile-first acquisition, product recommendation, KYC, quotation, and order-fulfilment platform supporting all **four MSME business segments** in a single configurable application:
+1. **Micro Retail & Services (55%):** Kirana stores, salons, pharmacies, local eateries (UPI/POS uptime, single bill, CCTV).
+2. **Professional Offices (25%):** CA firms, medical clinics, coaching institutes, consultancies (static IP, cloud backup, endpoint security).
+3. **Small Multi-Site Businesses (15%):** Restaurant chains, retail chains with 3–10 outlets (centralized billing, 4G/5G failover, SD-WAN).
+4. **Small Manufacturers (5%):** Light engineering, textile mills, auto parts workshops (Internet Leased Lines, IoT machine monitoring).
+
+> **Core Architectural Principle:**  
+> **AI guides customers, but it MUST NEVER control product eligibility, pricing, KYC verification decisions, or order states.**  
+> Commercial and compliance rules are strictly deterministic and catalogue-restricted.
+
+---
+
+## 2. Final Recommended Technology Stack
+
+| Layer | Selected Technology | Architectural Role |
 |---|---|---|
-| **Language** | **TypeScript (v5.x)** (strict mode) | End-to-end type safety between frontend, backend, and database models |
-| **Frontend Framework** | **Next.js (v14/15 App Router, TypeScript)** | High-performance mobile-first web app, React Server Components, optimized client hydration |
-| **Styling & Icons** | **Tailwind CSS + Lucide React** | Segment-adaptive UI theme engine, clean telecom-grade mobile-responsive layout |
-| **Frontend State** | **Zustand / React Context + TanStack Query** | Client-side session, cart/quote state, and API caching |
-| **Backend Runtime** | **Node.js (v22+)** with `tsx` | High-performance async modular API runtime |
-| **Backend Framework** | **Express.js (TypeScript)** / `cors` / `dotenv` | Modular REST API routing, middleware, error handling |
-| **Database** | **SQLite** (`better-sqlite3`) | Fast, zero-config relational store seeded directly from hackathon CSVs |
-| **Data Ingestion (ETL)** | `csv-parser` / TypeScript script | Ingests `product_catalogue.csv`, `mock_gstin_registry.csv`, `mock_udyam_registry.csv`, `smb_leads.csv` |
-| **Document/OCR Engine** | Custom TypeScript Rule Engine + Canvas/Tesseract.js | Document parsing, checksum validation, date recency, mock registry validator |
+| **Frontend Framework** | **Next.js (App Router, React 19/18, TypeScript)** | High-performance mobile-first responsive web app, React Server Components (RSC), optimized client hydration |
+| **Styling & UI Kit** | **Tailwind CSS + shadcn/ui + Lucide Icons** | Segment-adaptive UI theme engine, clean telecom-grade dashboard components |
+| **Backend API** | **Next.js Route Handlers (`/api/v1/...`)** | Versioned REST API layer, modular domain architecture, typed middleware |
+| **Schema Validation** | **Zod (TypeScript)** | Runtime request, response, and document extraction validation |
+| **Database & ORM** | **PostgreSQL (Neon / AWS RDS) + Drizzle ORM** | Relational integrity, type-safe migrations, and zero-overhead queries |
+| **Authentication & RBAC** | **Better Auth** | Session management, RBAC (`customer`, `partner`, `sales_agent`, `admin`), and business-level authorization |
+| **AI Advisor Engine** | **Gemini API / OpenAI API** | Structured tool calling, requirements extraction, plain-language explanation (Hindi & English) |
+| **Recommendation Engine**| **Custom Deterministic TypeScript Rules Engine** | 100% catalogue-grounded eligibility check, dependency validation, zero SKU hallucination |
+| **Smart KYC & OCR** | **Tesseract.js / Google Document AI + OpenCV + Zod** | Automated document extraction, recency & checksum check, mock GSTIN/Udyam registry adapters |
+| **Background Processing**| **Trigger.dev** | Asynchronous document processing, scheduled notification dispatches, and SLA monitoring |
+| **Private File Storage** | **Cloudflare R2** | Private encrypted document storage with short-lived presigned URLs |
+| **Cache & Rate Limiting**| **Redis / Upstash** (as needed) | Session cache and endpoint rate limiting |
+| **Notifications** | **WhatsApp Cloud API / MSG91 / Resend** | Automated milestone updates (reducing status-chasing calls) |
+| **Testing & CI/CD** | **Vitest + Playwright + GitHub Actions** | End-to-end integration tests for catalogue rules, quote engine, and KYC test specimens |
+| **Monitoring & Analytics**| **Sentry + PostHog** | Error tracking and funnel analytics |
 
 ---
 
-## 2. Repository Architecture
+## 3. Modular Monolith Architecture & Project Structure
+
+The project is structured as a **modular monolith** within a single Next.js codebase. Each domain module exposes a strict public interface to prevent circular dependencies.
 
 ```
-Airtel-hackathon/
-├── package.json                   # Root scripts (run frontend & backend concurrently)
-├── tsconfig.json                  # Root TypeScript configuration
-├── .gitignore
-├── YTL_TrackA_Udyam_Digital_Data/ # Hackathon test pack (CSVs & KYC specimen images)
-│   ├── product_catalogue.csv      # 25 products with constraint rules
-│   ├── mock_gstin_registry.csv    # 3,534 GST records
-│   ├── mock_udyam_registry.csv    # 2,723 Udyam records
-│   ├── smb_leads.csv              # 5,000 lead records
-│   └── kyc_documents/             # 47 PNG specimen images (K01–K12)
-│
-├── shared/                        # Shared TypeScript interfaces & DTOs
-│   └── types.ts                   # Product, Bundle, Quote, KYC, Order types
-│
-├── server/                        # Backend TypeScript Express Application
-│   ├── tsconfig.json
-│   ├── package.json
-│   ├── src/
+udyam-digital/
+├── drizzle/                       # Drizzle migration files and SQL snapshots
+│   └── migrations/
+├── public/                        # Static assets, brand logos, mock document samples
+├── scripts/                       # ETL & Data Ingestion Scripts
+│   ├── import-catalogue.ts        # Ingests product_catalogue.csv (25 SKUs)
+│   ├── import-registries.ts       # Ingests mock_gstin_registry.csv & mock_udyam_registry.csv
+│   └── import-leads.ts            # Ingests smb_leads.csv (5,000 funnel leads)
+├── src/
+│   ├── app/                       # Next.js App Router (Pages & Route Handlers)
+│   │   ├── (marketing)/           # Landing page & segment overview
+│   │   │   └── page.tsx
+│   │   ├── (auth)/                # Better Auth flows (Mobile OTP login & role routing)
+│   │   │   ├── login/page.tsx
+│   │   │   └── register/page.tsx
+│   │   ├── (customer)/            # Customer Self-Service Experience
+│   │   │   ├── dashboard/page.tsx # Segment-adaptive dashboard (Kirana, Clinic, Multi, Mfg)
+│   │   │   ├── advisor/page.tsx   # Plain-language need discovery wizard
+│   │   │   ├── quote/page.tsx     # Transparent bundle quote & live add-on toggling
+│   │   │   ├── kyc/page.tsx       # DPDP consent & dual-track document verification
+│   │   │   ├── tracker/page.tsx   # Live milestone order tracker & SLA countdown
+│   │   │   └── settings/page.tsx  # Change business type (without wiping subscriptions)
+│   │   ├── (partner)/             # Assisted-Digital Console
+│   │   │   ├── leads/page.tsx     # Stalled checkout recovery & partner code attribution
+│   │   │   └── kyc-review/page.tsx# Exception handling for flagged KYC review cases
+│   │   └── api/                   # Versioned REST API Route Handlers
+│   │       └── v1/
+│   │           ├── auth/[...all]/route.ts
+│   │           ├── businesses/route.ts
+│   │           ├── dashboard/config/route.ts
+│   │           ├── advisor/route.ts
+│   │           ├── catalogue/route.ts
+│   │           ├── quotes/route.ts
+│   │           ├── kyc/route.ts
+│   │           ├── orders/route.ts
+│   │           ├── partner/route.ts
+│   │           └── analytics/route.ts
+│   │
+│   ├── modules/                   # Domain Modules (Pure Business Logic)
+│   │   ├── business-profile/      # Segment config, profile updates, audit trail
+│   │   ├── catalogue/             # 25-SKU loader, hard constraints, dependency graph
+│   │   ├── advisor/               # LLM prompt orchestration, structured facts extraction
+│   │   ├── recommendation/        # Deterministic ranking & outcome-based bundle compiler
+│   │   ├── quote/                 # Server-side pricing engine & immutable snapshots
+│   │   ├── kyc/                   # Dual-track pipeline, registry lookup adapters, rules validator
+│   │   ├── order/                 # Order state machine, idempotency checks, event log
+│   │   ├── fulfilment/            # Simulated provisioning milestones & SLA calculations
+│   │   ├── handoff/               # Lead routing to field sales/partners with attribution
+│   │   └── analytics/             # Funnel statistics & CAC savings calculator
+│   │
+│   ├── infrastructure/            # Technical Adapters & External Clients
 │   │   ├── db/
-│   │   │   ├── schema.sql         # Relational database schema
-│   │   │   ├── seed.ts            # ETL: populates SQLite from CSV files
-│   │   │   └── database.ts        # Typed SQLite client connection
-│   │   ├── services/
-│   │   │   ├── catalogueService.ts # Strict hard-constraint & bundle logic
-│   │   │   ├── quoteService.ts    # Server-side pricing & add-on recalculations
-│   │   │   ├── kycService.ts      # Multi-point validator & registry lookups
-│   │   │   └── orderService.ts    # State machine & milestone SLA tracker
-│   │   ├── routes/
-│   │   │   ├── authRoutes.ts      # OTP demo verification
-│   │   │   ├── businessRoutes.ts  # Segment profile CRUD & adaptive config
-│   │   │   ├── advisorRoutes.ts   # Needs assessment & recommendations
-│   │   │   ├── quoteRoutes.ts     # Quote creation & acceptance
-│   │   │   ├── kycRoutes.ts       # DPDP consent & document processing
-│   │   │   ├── orderRoutes.ts     # Order submission & tracking
-│   │   │   ├── partnerRoutes.ts   # Stalled leads & human review queue
-│   │   │   └── analyticsRoutes.ts # 5,000-lead funnel & CAC engine
-│   │   └── server.ts              # Express app bootstrap & middleware
-│
-└── frontend/                      # Next.js App Router (TypeScript + Tailwind)
-    ├── package.json
-    ├── tsconfig.json
-    ├── next.config.mjs
-    ├── tailwind.config.ts
-    ├── src/
-    │   ├── app/                   # Next.js App Router pages
-    │   │   ├── layout.tsx         # Root layout with language & theme providers
-    │   │   ├── page.tsx           # Landing & Mobile Login (OTP verification)
-    │   │   ├── dashboard/         # Segment-adaptive dashboard (Kirana/Clinic/Multi/Mfg)
-    │   │   │   └── page.tsx
-    │   │   ├── advisor/           # Interactive question wizard & bundle selector
-    │   │   │   └── page.tsx
-    │   │   ├── quote/             # Transparent pricing breakdown & live add-on toggles
-    │   │   │   └── page.tsx
-    │   │   ├── kyc/               # DPDP consent modal & document upload
-    │   │   │   └── page.tsx
-    │   │   ├── tracker/           # Live order activation timeline & SLA countdown
-    │   │   │   └── page.tsx
-    │   │   ├── partner/           # Field partner lead recovery & review console
-    │   │   │   └── page.tsx
-    │   │   └── analytics/         # 5,000-lead funnel metrics & CAC calculator
-    │   │       └── page.tsx
-    │   ├── components/
-    │   │   ├── layout/            # MobileFrame, Header, Navbar, LanguageSwitch (EN/HI)
-    │   │   ├── ui/                # Buttons, Modals, Badges, Sliders, Cards
-    │   │   ├── dashboard/         # Segment cards (Kirana, Clinic, Multi-site, Factory)
-    │   │   ├── advisor/           # Dialogue bubble, Need options, Bundle summary
-    │   │   ├── kyc/               # DPDP consent checkbox, Specimen picker (K01–K12)
-    │   │   └── tracker/           # Milestone step indicators, SLA badge
-    │   ├── lib/                   # API client fetchers, shared constants
-    │   └── context/               # LanguageContext (EN/HI), BusinessContext, AuthContext
+│   │   │   ├── schema/            # Drizzle relational schemas
+│   │   │   │   ├── users.ts
+│   │   │   │   ├── businesses.ts
+│   │   │   │   ├── catalogue.ts
+│   │   │   │   ├── quotes.ts
+│   │   │   │   ├── kyc.ts
+│   │   │   │   └── orders.ts
+│   │   │   └── client.ts          # Drizzle client instance (PostgreSQL)
+│   │   ├── auth/                  # Better Auth configuration & session hooks
+│   │   ├── ai/                    # Gemini / OpenAI client with structured tool calling
+│   │   ├── ocr/                   # Document extraction engine & image preprocessor
+│   │   ├── registries/            # Mock GSTIN and Udyam database adapters
+│   │   ├── storage/               # Cloudflare R2 client & presigned URL generator
+│   │   └── jobs/                  # Trigger.dev background tasks
+│   │
+│   ├── components/                # React Components
+│   │   ├── ui/                    # shadcn/ui primitives (Button, Card, Dialog, Badge, Tabs)
+│   │   ├── layout/                # Header, MobileFrame, Navbar, LanguageSwitch (EN/HI)
+│   │   ├── dashboard/             # Segment cards (Kirana, Clinic, Multi-store, Factory)
+│   │   ├── advisor/               # Chat bubbles, quick-select chips, bundle cards
+│   │   ├── quote/                 # Cost breakdown table, dynamic add-on sliders
+│   │   ├── kyc/                   # DPDP consent checklist, specimen applicant picker (K01–K12)
+│   │   └── tracker/               # Interactive milestone step indicators & SLA clock
+│   │
+│   └── lib/                       # Utility functions, formatting, constants
+│       ├── env.ts                 # Validated environment variables (Zod)
+│       └── utils.ts
+├── tests/                         # Vitest & Playwright Test Suites
+│   ├── unit/                      # Rules engine, quote calculation, and validation tests
+│   └── e2e/                       # Full customer & partner journey tests
+├── drizzle.config.ts              # Drizzle ORM config
+├── tailwind.config.ts
+├── next.config.mjs
+└── package.json
 ```
 
 ---
 
-## 3. Database Schema (SQLite)
-
-```sql
--- 1. Users & Authentication
-CREATE TABLE IF NOT EXISTS users (
-    id TEXT PRIMARY KEY,
-    mobile TEXT NOT NULL UNIQUE,
-    role TEXT CHECK(role IN ('customer', 'partner', 'sales_agent', 'admin')) DEFAULT 'customer',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
--- 2. Business Profiles (Supports all 4 segments)
-CREATE TABLE IF NOT EXISTS businesses (
-    id TEXT PRIMARY KEY,
-    owner_user_id TEXT NOT NULL REFERENCES users(id),
-    business_name TEXT NOT NULL,
-    business_type TEXT CHECK(business_type IN ('micro_retail_services', 'professional_office', 'small_multisite', 'small_manufacturer')) NOT NULL,
-    city TEXT NOT NULL,
-    city_tier INTEGER CHECK(city_tier IN (1, 2)) NOT NULL DEFAULT 2,
-    state TEXT NOT NULL,
-    preferred_language TEXT CHECK(preferred_language IN ('en', 'hi')) DEFAULT 'en',
-    employee_count INTEGER NOT NULL DEFAULT 1,
-    num_sites INTEGER NOT NULL DEFAULT 1,
-    has_gstin INTEGER NOT NULL DEFAULT 0,
-    gstin TEXT,
-    has_udyam INTEGER NOT NULL DEFAULT 0,
-    udyam_number TEXT,
-    partner_code TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
--- 3. Imported Catalogue Cache (from product_catalogue.csv)
-CREATE TABLE IF NOT EXISTS catalogue_products (
-    product_id TEXT PRIMARY KEY,
-    category TEXT NOT NULL,
-    product_name TEXT NOT NULL,
-    description TEXT NOT NULL,
-    unit TEXT NOT NULL,
-    price_min_inr_per_month INTEGER NOT NULL,
-    price_max_inr_per_month INTEGER NOT NULL,
-    one_time_setup_inr INTEGER NOT NULL,
-    min_contract_months INTEGER NOT NULL,
-    available_city_tiers TEXT NOT NULL,
-    min_employees INTEGER NOT NULL,
-    min_sites INTEGER NOT NULL,
-    requires_gstin TEXT NOT NULL,
-    requires_one_of TEXT,
-    typical_install_days INTEGER NOT NULL,
-    target_segments TEXT NOT NULL
-);
-
--- 4. Quotes & Line Items
-CREATE TABLE IF NOT EXISTS quotes (
-    id TEXT PRIMARY KEY,
-    business_id TEXT NOT NULL REFERENCES businesses(id),
-    bundle_name TEXT NOT NULL,
-    monthly_recurring_total INTEGER NOT NULL,
-    one_time_setup_total INTEGER NOT NULL,
-    contract_months INTEGER NOT NULL,
-    items_json TEXT NOT NULL, -- JSON array of { product_id, quantity, unit_price, is_addon }
-    status TEXT CHECK(status IN ('draft', 'presented', 'accepted', 'expired')) DEFAULT 'presented',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
--- 5. DPDP Consent & KYC Records
-CREATE TABLE IF NOT EXISTS consents (
-    id TEXT PRIMARY KEY,
-    business_id TEXT NOT NULL REFERENCES businesses(id),
-    purpose TEXT NOT NULL,
-    notice_version TEXT NOT NULL,
-    is_granted INTEGER NOT NULL,
-    ip_address TEXT,
-    granted_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS kyc_cases (
-    id TEXT PRIMARY KEY,
-    business_id TEXT NOT NULL REFERENCES businesses(id),
-    track TEXT CHECK(track IN ('gstin', 'non_gstin_udyam')) NOT NULL,
-    status TEXT CHECK(status IN ('pending', 'verified', 'needs_review', 'rejected')) DEFAULT 'pending',
-    flagged_reasons TEXT, -- JSON array of strings
-    extracted_data TEXT,  -- JSON object of normalized fields
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
--- 6. Orders & Activation Timeline
-CREATE TABLE IF NOT EXISTS orders (
-    id TEXT PRIMARY KEY,
-    business_id TEXT NOT NULL REFERENCES businesses(id),
-    quote_id TEXT NOT NULL REFERENCES quotes(id),
-    kyc_case_id TEXT NOT NULL REFERENCES kyc_cases(id),
-    status TEXT CHECK(status IN ('order_placed', 'kyc_cleared', 'installation_scheduled', 'activated', 'cancelled')) DEFAULT 'order_placed',
-    expected_activation_date DATE NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS order_milestones (
-    id TEXT PRIMARY KEY,
-    order_id TEXT NOT NULL REFERENCES orders(id),
-    stage_name TEXT NOT NULL,
-    status TEXT CHECK(status IN ('completed', 'in_progress', 'pending')) NOT NULL,
-    sla_time TEXT NOT NULL,
-    completed_at DATETIME
-);
-
--- 7. Partner Handoff & Attribution
-CREATE TABLE IF NOT EXISTS handoff_tasks (
-    id TEXT PRIMARY KEY,
-    business_id TEXT NOT NULL REFERENCES businesses(id),
-    lead_id TEXT,
-    partner_id TEXT,
-    stage_stalled TEXT NOT NULL,
-    reason TEXT NOT NULL,
-    status TEXT CHECK(status IN ('open', 'claimed', 'resolved')) DEFAULT 'open',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-```
-
----
-
-## 4. Shared TypeScript Definitions (`shared/types.ts`)
+## 4. Database Schema (Drizzle ORM & PostgreSQL)
 
 ```typescript
-export type BusinessType = 
-  | 'micro_retail_services'
-  | 'professional_office'
-  | 'small_multisite'
-  | 'small_manufacturer';
+// src/infrastructure/db/schema/index.ts
+import { pgTable, text, integer, timestamp, boolean, jsonb, pgEnum } from 'drizzle-orm/pg-core';
 
-export type UserRole = 'customer' | 'partner' | 'sales_agent' | 'admin';
-export type SupportedLanguage = 'en' | 'hi';
+export const userRoleEnum = pgEnum('user_role', ['customer', 'partner', 'sales_agent', 'admin']);
+export const businessTypeEnum = pgEnum('business_type', [
+  'micro_retail_services',
+  'professional_office',
+  'small_multisite',
+  'small_manufacturer'
+]);
+export const quoteStatusEnum = pgEnum('quote_status', ['draft', 'presented', 'accepted', 'expired']);
+export const kycTrackEnum = pgEnum('kyc_track', ['gstin', 'non_gstin_udyam']);
+export const kycStatusEnum = pgEnum('kyc_status', ['pending', 'verified', 'needs_review', 'rejected']);
+export const orderStatusEnum = pgEnum('order_status', [
+  'order_placed',
+  'kyc_cleared',
+  'installation_scheduled',
+  'activated',
+  'cancelled'
+]);
 
-export interface CatalogueProduct {
-  product_id: string;
-  category: string;
-  product_name: string;
-  description: string;
-  unit: string;
-  price_min_inr_per_month: number;
-  price_max_inr_per_month: number;
-  one_time_setup_inr: number;
-  min_contract_months: number;
-  available_city_tiers: string; // "1;2" or "1"
-  min_employees: number;
-  min_sites: number;
-  requires_gstin: 'Y' | 'N';
-  requires_one_of: string | null; // e.g. "P01|P02|P03|P05|P06"
-  typical_install_days: number;
-  target_segments: string; // "micro;prof"
-}
+// 1. Users
+export const users = pgTable('users', {
+  id: text('id').primaryKey(),
+  mobile: text('mobile').notNull().unique(),
+  role: userRoleEnum('role').default('customer').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+});
 
-export interface QuoteItem {
-  product_id: string;
-  product_name: string;
-  quantity: number;
-  unit_price: number;
-  setup_fee: number;
-  is_addon: boolean;
-}
+// 2. Businesses
+export const businesses = pgTable('businesses', {
+  id: text('id').primaryKey(),
+  ownerUserId: text('owner_user_id').notNull().references(() => users.id),
+  businessName: text('business_name').notNull(),
+  businessType: businessTypeEnum('business_type').notNull(),
+  city: text('city').notNull(),
+  cityTier: integer('city_tier').notNull().default(2),
+  state: text('state').notNull(),
+  preferredLanguage: text('preferred_language').default('en').notNull(),
+  employeeCount: integer('employee_count').default(1).notNull(),
+  numSites: integer('num_sites').default(1).notNull(),
+  hasGstin: boolean('has_gstin').default(false).notNull(),
+  gstin: text('gstin'),
+  hasUdyam: boolean('has_udyam').default(false).notNull(),
+  udyamNumber: text('udyam_number'),
+  partnerCode: text('partner_code'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+});
 
-export interface QuoteCalculationResult {
-  bundle_name: string;
-  monthly_recurring_total: number;
-  one_time_setup_total: number;
-  contract_months: number;
-  items: QuoteItem[];
-}
+// 3. Catalogue Products (25 SKUs imported from product_catalogue.csv)
+export const catalogueProducts = pgTable('catalogue_products', {
+  productId: text('product_id').primaryKey(),
+  category: text('category').notNull(),
+  productName: text('product_name').notNull(),
+  description: text('description').notNull(),
+  unit: text('unit').notNull(),
+  priceMinInr: integer('price_min_inr_per_month').notNull(),
+  priceMaxInr: integer('price_max_inr_per_month').notNull(),
+  oneTimeSetupInr: integer('one_time_setup_inr').notNull(),
+  minContractMonths: integer('min_contract_months').notNull(),
+  availableCityTiers: text('available_city_tiers').notNull(), // "1;2" or "1"
+  minEmployees: integer('min_employees').notNull(),
+  minSites: integer('min_sites').notNull(),
+  requiresGstin: text('requires_gstin').notNull(), // 'Y' | 'N'
+  requiresOneOf: text('requires_one_of'), // e.g. "P01|P02|P03|P05|P06"
+  typicalInstallDays: integer('typical_install_days').notNull(),
+  targetSegments: text('target_segments').notNull()
+});
 
-export type KycTrack = 'gstin' | 'non_gstin_udyam';
-export type KycStatus = 'pending' | 'verified' | 'needs_review' | 'rejected';
+// 4. Quotes & Line Items
+export const quotes = pgTable('quotes', {
+  id: text('id').primaryKey(),
+  businessId: text('business_id').notNull().references(() => businesses.id),
+  bundleName: text('bundle_name').notNull(),
+  monthlyRecurringTotal: integer('monthly_recurring_total').notNull(),
+  oneTimeSetupTotal: integer('one_time_setup_total').notNull(),
+  contractMonths: integer('contract_months').notNull(),
+  itemsJson: jsonb('items_json').notNull(), // Array of { productId, name, quantity, unitPrice, isAddon }
+  status: quoteStatusEnum('status').default('presented').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+});
 
-export interface KycCheckItem {
-  check_type: string;
-  passed: boolean;
-  message: string;
-  severity: 'blocker' | 'warning' | 'info';
-}
+// 5. DPDP Consent Records
+export const consents = pgTable('consents', {
+  id: text('id').primaryKey(),
+  businessId: text('business_id').notNull().references(() => businesses.id),
+  purpose: text('purpose').notNull(),
+  noticeVersion: text('notice_version').notNull(),
+  isGranted: boolean('is_granted').notNull(),
+  ipAddress: text('ip_address'),
+  grantedAt: timestamp('granted_at').defaultNow().notNull()
+});
 
-export interface KycValidationResult {
-  status: KycStatus;
-  checks: KycCheckItem[];
-  flagged_reasons: string[];
-  extracted_data: Record<string, any>;
-}
+// 6. KYC Cases & Checks
+export const kycCases = pgTable('kyc_cases', {
+  id: text('id').primaryKey(),
+  businessId: text('business_id').notNull().references(() => businesses.id),
+  track: kycTrackEnum('track').notNull(),
+  status: kycStatusEnum('status').default('pending').notNull(),
+  flaggedReasons: jsonb('flagged_reasons').default([]).notNull(),
+  extractedData: jsonb('extracted_data').default({}).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+});
 
-export interface OrderMilestone {
-  stage_name: string;
-  status: 'completed' | 'in_progress' | 'pending';
-  sla_time: string;
-  completed_at: string | null;
-}
+// 7. Orders & Milestones
+export const orders = pgTable('orders', {
+  id: text('id').primaryKey(),
+  businessId: text('business_id').notNull().references(() => businesses.id),
+  quoteId: text('quote_id').notNull().references(() => quotes.id),
+  kycCaseId: text('kyc_case_id').notNull().references(() => kycCases.id),
+  status: orderStatusEnum('status').default('order_placed').notNull(),
+  expectedActivationDate: timestamp('expected_activation_date').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+export const orderMilestones = pgTable('order_milestones', {
+  id: text('id').primaryKey(),
+  orderId: text('order_id').notNull().references(() => orders.id),
+  stageName: text('stage_name').notNull(),
+  status: text('status').notNull(), // 'completed' | 'in_progress' | 'pending'
+  slaTime: text('sla_time').notNull(),
+  completedAt: timestamp('completed_at')
+});
+
+// 8. Partner Handoff Tasks
+export const handoffTasks = pgTable('handoff_tasks', {
+  id: text('id').primaryKey(),
+  businessId: text('business_id').notNull().references(() => businesses.id),
+  leadId: text('lead_id'),
+  partnerId: text('partner_id'),
+  stageStalled: text('stage_stalled').notNull(),
+  reason: text('reason').notNull(),
+  status: text('status').default('open').notNull(), // 'open' | 'claimed' | 'resolved'
+  createdAt: timestamp('created_at').defaultNow().notNull()
+});
 ```
 
 ---
 
-## 5. Core Algorithmic Logic & Business Rules
+## 5. Algorithmic Domain Rules
 
-### 5.1 Catalogue Eligibility Engine (`catalogueService.ts`)
-Zero hallucination: only products satisfying 100% of the following rules are returned:
-1. **City Tier Filter:**  
-   `product.available_city_tiers.split(';').map(Number).includes(business.city_tier)`
-2. **Employee Scale Filter:**  
-   `business.employee_count >= product.min_employees`
-3. **Site Scale Filter:**  
-   `business.num_sites >= product.min_sites`
-4. **GSTIN Mandatory Check:**  
-   If `product.requires_gstin === 'Y'`, reject if `business.has_gstin === 0`.
-5. **Dependency Validation:**  
-   If `product.requires_one_of` is defined, bundle must contain at least one matching SKU from the pipe-separated list.
+### 5.1 Deterministic Catalogue & Rules Engine (`modules/recommendation`)
+The AI Advisor collects natural language input, but the recommendation engine deterministically enforces catalogue constraints:
+1. **Tier Compatibility:** Product `available_city_tiers` must include customer's `city_tier`.
+2. **Scale Compatibility:** Customer's `employee_count >= min_employees` and `num_sites >= min_sites`.
+3. **Mandatory GSTIN Filter:** Products with `requires_gstin = 'Y'` (e.g. `P05` ILL 20, `P10` SD-WAN) are disqualified if customer has no active GSTIN.
+4. **Dependency Resolution:** Products with `requires_one_of` (e.g. `P09` Failover, `P21` Firewall) are only eligible if the bundle contains at least one primary internet pipe (`P01|P02|P03|P05|P06`).
+5. **Outcome Bundling:** SKUs are mapped into business-friendly packages:
+   * **Kirana Pack:** `P01` (Biz Fibre 100) + `P22` (Secure Wi-Fi) + `P23` (Cloud CCTV)
+   * **Practice Suite (CA/Clinic):** `P02` (Biz Fibre 300) + `P11` (Static IP) + `P17` (Cloud Backup 1TB) + `P20` (Endpoint Security)
+   * **Multi-Store Pro:** `P02` (Biz Fibre 300) + `P09` (4G Failover) + `P10` (SD-WAN) + `P23` (Cloud CCTV)
+   * **Industrial Connected Unit:** `P05` (ILL 20) + `P24` (Machine Monitoring IoT) + `P21` (Managed Firewall)
 
-### 5.2 Server-Side Quote Recalculation Engine (`quoteService.ts`)
-* Pricing is strictly computed on the backend.
-* **Monthly Total:** $\sum (\text{item.quantity} \times \text{item.price\_min\_inr\_per\_month})$
-* **One-time Setup Total:** $\sum (\text{item.one\_time\_setup\_inr})$
-* **Contract Length:** $\max (\text{item.min\_contract\_months})$ across all items.
-* Toggling an add-on triggers a `POST /api/v1/quotes/recalculate` call that returns the updated snapshot.
+### 5.2 Server-Side Quote Recalculation Engine (`modules/quote`)
+* **Monthly Total:** $\sum (\text{item.quantity} \times \text{item.priceMinInr})$
+* **One-time Setup Fee:** $\sum (\text{item.oneTimeSetupInr})$
+* **Contract Term:** $\max (\text{item.minContractMonths})$ across all included items.
+* **Auditability:** Client accepts an immutable quote snapshot (`quote_id`) stored in PostgreSQL.
 
-### 5.3 Smart KYC Multi-Point Validator (`kycService.ts`)
-Evaluates applicant documents against the mock registries and specimen rules:
+### 5.3 Smart KYC & Planted Issue Validator (`modules/kyc`)
+Evaluates applicant documents against the mock registries and specimen test data:
 1. **GSTIN Registry Verification:**
-   * Query `mock_gstin_registry`. If not found $\rightarrow$ `REJECTED`.
-   * If status is `'Cancelled'` or `'Suspended'` (e.g., applicant K01 `37IHKXV5167L1ZS`) $\rightarrow$ mark `NEEDS_REVIEW`.
+   * Query `mock_gstin_registry.csv`. If status is `Cancelled` (e.g. Applicant K01 `37IHKXV5167L1ZS`), flag `STATUS_CANCELLED` $\rightarrow$ `NEEDS_REVIEW`.
 2. **Udyam Registry Verification:**
-   * Query `mock_udyam_registry`.
-   * If certificate registration number is blank (e.g., K01 udyam image) $\rightarrow$ flag missing number.
-   * Cross-compare `date_of_registration`: if certificate date differs from registry date (e.g., K02 `2023-01-11` vs registry `2022-09-27`) $\rightarrow$ mark `NEEDS_REVIEW`.
-3. **Address Proof Recency Check:**
-   * Parse utility bill date.
-   * Relative to benchmark date (`2026-07-15`), if $(\text{Benchmark} - \text{BillDate}) > 90 \text{ days}$ $\rightarrow$ mark `NEEDS_REVIEW`.
+   * Query `mock_udyam_registry.csv`.
+   * If registration number is blank on certificate (e.g. Applicant K01), flag `MISSING_REGISTRATION_NUMBER`.
+   * If date of registration on certificate differs from registry (e.g. Applicant K02 `2023-01-11` vs registry `2022-09-27`), flag `REGISTRATION_DATE_MISMATCH` $\rightarrow$ `NEEDS_REVIEW`.
+3. **90-Day Address Proof Recency Check:**
+   * Utility/electricity bill date is compared with benchmark date (`2026-07-15`). If $> 90$ days old, flag `DOCUMENT_EXPIRED`.
 4. **Signatory Verification:**
-   * Compare signatory name on ID card with proprietor/director name in GST/Udyam data.
-5. **Final Output State:**
-   * All pass $\rightarrow$ `VERIFIED`.
-   * Flags with non-fatal discrepancy $\rightarrow$ `NEEDS_REVIEW` (routes to Partner Console).
-   * Blatant forgery / unresolvable data $\rightarrow$ `REJECTED`.
+   * Confirm signatory ID matches proprietor/director name in registration records.
+5. **Tri-State Decision:**
+   * `VERIFIED` $\rightarrow$ Immediate green light to order placement.
+   * `NEEDS_REVIEW` $\rightarrow$ Routed to Partner Console for human review.
+   * `REJECTED` $\rightarrow$ Invalid/forged identifiers.
 
 ---
 
-## 6. Typed API Surface (Express TypeScript)
+## 6. End-to-End API Surface Contract
 
-| Route | Method | Payload / Query | Response DTO |
-|---|---|---|---|
-| `/api/v1/auth/otp-request` | `POST` | `{ mobile: string, role?: UserRole }` | `{ success: boolean, simulated_otp: string }` |
-| `/api/v1/auth/otp-verify` | `POST` | `{ mobile: string, otp: string }` | `{ token: string, user: User, business?: Business }` |
-| `/api/v1/business/profile` | `POST` | `Partial<Business>` | `{ business: Business }` |
-| `/api/v1/business/:id/profile` | `PATCH` | `Partial<Business>` | `{ business: Business, message: string }` |
-| `/api/v1/business/dashboard-config` | `GET` | `?business_type=...&lang=...` | `SegmentDashboardConfig` |
-| `/api/v1/catalogue/products` | `GET` | `?segment=...&city_tier=...` | `CatalogueProduct[]` |
-| `/api/v1/advisor/recommend` | `POST` | `{ business_id: string, needs: Record<string, any> }` | `{ bundles: BundleOption[] }` |
-| `/api/v1/quotes` | `POST` | `{ business_id: string, bundle_id: string, product_ids: string[] }` | `QuoteCalculationResult & { quote_id: string }` |
-| `/api/v1/quotes/recalculate` | `POST` | `{ quote_id: string, items: { product_id: string, quantity: number, is_addon: boolean }[] }` | `QuoteCalculationResult` |
-| `/api/v1/quotes/:id/accept` | `POST` | `{ quote_id: string }` | `{ status: 'accepted', quote: Quote }` |
-| `/api/v1/kyc/consent` | `POST` | `{ business_id: string, purposes: string[] }` | `{ consent_logged: boolean }` |
-| `/api/v1/kyc/validate-specimen` | `POST` | `{ business_id: string, applicant_id: 'K01'...'K12', track: KycTrack }` | `KycValidationResult` |
-| `/api/v1/orders` | `POST` | `{ quote_id: string, kyc_case_id: string }` | `{ order_id: string, status: string, timeline: OrderMilestone[] }` |
-| `/api/v1/orders/:id/tracker` | `GET` | `order_id` in path | `{ order: Order, milestones: OrderMilestone[], next_action: string }` |
-| `/api/v1/partner/stalled-leads` | `GET` | `?limit=20` | `{ leads: LeadItem[], kyc_reviews: KycReviewTask[] }` |
-| `/api/v1/analytics/funnel` | `GET` | none | `{ funnel: StageStats[], cac_comparison: CacMetrics }` |
-
----
-
-## 7. Step-by-Step Developer Sprint Checklist
-
-### Sprint 1: TypeScript Monorepo & Backend Core Setup
-- [ ] Initialize `package.json` with npm workspaces (`server`, `frontend`, `shared`).
-- [ ] Configure `tsconfig.json` across shared, server, and frontend.
-- [ ] Implement `server/src/db/seed.ts` using `better-sqlite3` to ingest the 4 CSV files into SQLite.
-- [ ] Build Express server with typed middleware, CORS, and request logging.
-
-### Sprint 2: Catalogue, AI Advisor & Quote Engine
-- [ ] Implement `catalogueService.ts` with strict constraint validation (`requires_gstin`, `available_city_tiers`, `min_employees`, `requires_one_of`).
-- [ ] Build outcome bundle templates for the 4 segments (`Kirana Pack`, `Clinic Suite`, `Multi-Store Pro`, `Industrial Plant`).
-- [ ] Build `quoteService.ts` for dynamic server-side pricing and add-on recalculation.
-- [ ] Implement unit tests validating that GSTIN-only SKUs are never recommended to non-GSTIN businesses.
-
-### Sprint 3: Smart KYC, DPDP Consent & Registry Checkers
-- [ ] Build `kycService.ts` incorporating dual-track workflow (GSTIN vs Non-GSTIN Udyam).
-- [ ] Implement query lookups against `mock_gstin_registry` and `mock_udyam_registry`.
-- [ ] Code edge-case detection rules:
-  - Cancelled GSTIN status (K01)
-  - Date of registration discrepancy (K02)
-  - Utility bill recency check relative to `2026-07-15` ($\le 90$ days)
-  - Blank or missing fields
-- [ ] Implement tri-state routing (`VERIFIED`, `NEEDS_REVIEW`, `REJECTED`).
-
-### Sprint 4: Order Tracker, SLA Engine & Partner Console
-- [ ] Implement `orderService.ts` with automatic state transitions and SLA calculation.
-- [ ] Build `partnerRoutes.ts` with lead claiming and manual review resolution.
-- [ ] Implement partner referral code attribution to prevent channel conflict.
-- [ ] Build simulated push notification dispatcher (SMS / WhatsApp preview).
-
-### Sprint 5: Frontend Next.js App Router Application
-- [ ] Initialize `frontend/` using Next.js (App Router, TypeScript, Tailwind CSS, Lucide React).
-- [ ] Implement layout with language switch context (English / Hindi हिन्दी).
-- [ ] Build `/dashboard` with dynamic cards adapted to the business segment (Kirana vs Clinic vs Multi-site vs Factory).
-- [ ] Build `/advisor` question wizard with plain-language outcome bundle recommendations.
-- [ ] Build `/quote` page with transparent breakdown and dynamic add-on recalculation.
-- [ ] Build `/kyc` page with DPDP unbundled consent and specimen applicant selector (K01–K12).
-- [ ] Build `/tracker` page with interactive milestone progress and SLA countdown.
-- [ ] Build `/partner` page for stalled checkout recovery and lead attribution.
+| Route | Method | Purpose |
+|---|---|---|
+| `/api/v1/auth/otp/request` | `POST` | Request demo login OTP (simulated `123456`) |
+| `/api/v1/auth/otp/verify` | `POST` | Verify OTP and issue Better Auth session |
+| `/api/v1/businesses` | `POST` | Register business profile and segment |
+| `/api/v1/businesses/{id}` | `GET` | Fetch business profile and active services |
+| `/api/v1/businesses/{id}/profile` | `PATCH` | Update segment/profile without modifying active subscriptions |
+| `/api/v1/dashboard/config` | `GET` | Get segment-specific dashboard layout, shortcuts, and copy (EN/HI) |
+| `/api/v1/advisor/sessions` | `POST` | Start advisor session with initial requirements |
+| `/api/v1/advisor/messages` | `POST` | Send natural language answer; receive structured follow-up |
+| `/api/v1/recommendations` | `POST` | Run deterministic rules engine and return eligible bundles |
+| `/api/v1/catalogue/products` | `GET` | List 25 SKUs with filter by segment and city tier |
+| `/api/v1/quotes` | `POST` | Create formal quote snapshot from bundle |
+| `/api/v1/quotes/{id}` | `PATCH` | Dynamically toggle add-ons and recalculate on server |
+| `/api/v1/quotes/{id}/accept` | `POST` | Customer accepts quote snapshot |
+| `/api/v1/kyc/consents` | `POST` | Record unbundled DPDP 2023 consent |
+| `/api/v1/kyc/documents` | `POST` | Upload document to Cloudflare R2; trigger extraction |
+| `/api/v1/kyc/cases/{id}` | `GET` | Retrieve multi-point check results and decision |
+| `/api/v1/orders` | `POST` | Create order from accepted quote + cleared KYC |
+| `/api/v1/orders/{id}` | `GET` | Get order details and current milestone status |
+| `/api/v1/orders/{id}/events` | `GET` | Get live event timeline and SLA countdown |
+| `/api/v1/handoffs` | `POST` | Create partner handoff task for stalled lead |
+| `/api/v1/partner/leads` | `GET` | Fetch partner leads and pending KYC review queue |
+| `/api/v1/analytics/funnel` | `GET` | Get 5,000-lead baseline vs Udyam Digital funnel metrics |
 
 ---
 
-## 8. Development & Run Commands
+## 7. Phased Implementation Roadmap
 
-```bash
-# 1. Install all dependencies (Root, Server, Frontend)
-npm install
-
-# 2. Seed Database from CSV Files
-npm run db:seed
-
-# 3. Start Backend Development Server (TypeScript / tsx)
-npm run dev:server    # Runs on http://localhost:5000
-
-# 4. Start Next.js Frontend (App Router / TypeScript)
-npm run dev:frontend  # Runs on http://localhost:3000
-
-# 5. Run Concurrently (Both Backend & Next.js Frontend)
-npm run dev
+```mermaid
+gantt
+    title Project Udyam Digital Implementation Roadmap
+    dateFormat  YYYY-MM-DD
+    section Phase 1: Foundation
+    Inspect CSVs & README          :a1, 2026-11-06, 1d
+    Drizzle Schemas & PostgreSQL   :a2, after a1, 1d
+    Data Ingestion Scripts (ETL)   :a3, after a2, 1d
+    Better Auth & 4-Segment Setup  :a4, after a3, 1d
+    section Phase 2: Advisor & Commerce
+    Deterministic Rules Engine     :b1, after a4, 2d
+    AI Advisor Orchestration       :b2, after b1, 1d
+    Quote Recalculator & Snapshots :b3, after b2, 1d
+    section Phase 3: Smart KYC
+    DPDP Consent Module            :c1, after b3, 1d
+    OCR Extraction & R2 Storage    :c2, after c1, 1d
+    Mock Registry Adapters         :c3, after c2, 1d
+    K01-K12 Edge Case Validator    :c4, after c3, 1d
+    section Phase 4: Fulfilment & Partner
+    Order State Machine & Timeline :d1, after c4, 1d
+    SLA Engine & Notifications     :d2, after d1, 1d
+    Partner & Sales Handoff Console:d3, after d2, 1d
+    section Phase 5: Demo & Polish
+    Next.js UI & Vernacular (HI/EN):e1, after d3, 2d
+    Funnel Analytics Dashboard     :e2, after e1, 1d
+    End-to-End Testing & 3-Min Demo:e3, after e2, 1d
 ```
+
+### Phase 1 — Foundation & Data Layer
+* [ ] Verify column names and data types from `product_catalogue.csv`, `mock_gstin_registry.csv`, `mock_udyam_registry.csv`, and `smb_leads.csv`.
+* [ ] Define Drizzle ORM schemas in `src/infrastructure/db/schema/`.
+* [ ] Build ETL scripts (`scripts/import-catalogue.ts`, `scripts/import-registries.ts`, `scripts/import-leads.ts`).
+* [ ] Implement Better Auth demo flow and 4-segment business registration.
+
+### Phase 2 — AI Advisor & Deterministic Commerce
+* [ ] Build `modules/catalogue` with hard constraint checks (`available_city_tiers`, `min_employees`, `min_sites`, `requires_gstin`, `requires_one_of`).
+* [ ] Build `modules/advisor` using Gemini/OpenAI structured tool calling to extract requirements into typed JSON.
+* [ ] Implement `modules/quote` for dynamic server-side pricing recalculation on add-on toggle.
+* [ ] Ensure zero product hallucination and verify that no GSTIN-only product is recommended to non-GSTIN businesses.
+
+### Phase 3 — Smart KYC & Mock Registries
+* [ ] Build DPDP 2023 unbundled consent UI and consent logger.
+* [ ] Implement document upload pipeline with Cloudflare R2 presigned URLs.
+* [ ] Build mock GSTIN and Udyam registry lookup adapters.
+* [ ] Implement rule validator handling planted test cases:
+  * K01 cancelled GSTIN detection
+  * K01 missing Udyam registration number
+  * K02 registration date mismatch
+  * 90-day address proof recency check relative to `2026-07-15`
+* [ ] Configure tri-state outcome engine (`VERIFIED`, `NEEDS_REVIEW`, `REJECTED`).
+
+### Phase 4 — Order Fulfilment & Partner Console
+* [ ] Build order state machine (`order_placed` $\rightarrow$ `kyc_cleared` $\rightarrow$ `installation_scheduled` $\rightarrow$ `activated`).
+* [ ] Build visual milestone tracker with SLA countdown to eliminate status-chasing calls.
+* [ ] Build Partner & Sales Console for recovering stalled checkouts from `smb_leads.csv` and reviewing `NEEDS_REVIEW` KYC cases.
+* [ ] Implement partner referral code attribution.
+
+### Phase 5 — Next.js Application & 3-Minute Demo Polish
+* [ ] Build Next.js App Router UI with Tailwind CSS + shadcn/ui.
+* [ ] Implement language switcher (English / Hindi हिन्दी).
+* [ ] Build interactive 5,000-lead funnel & CAC savings dashboard.
+* [ ] Execute 3-minute hackathon demo script:
+  * *0:00–0:30:* Mobile registration & segment selection (Kirana in Hindi).
+  * *0:30–1:00:* AI Advisor discovery & instant bundle quote.
+  * *1:00–1:50:* DPDP consent, zero-visit Udyam KYC, and K01 cancelled GSTIN review case.
+  * *1:50–2:30:* Live order milestone tracker.
+  * *2:30–3:00:* Partner lead recovery console and CAC analytics.
+
+---
+
+## 8. What to Avoid (Anti-Patterns)
+
+* **Microservices:** Adds unnecessary network latency and deployment complexity for a hackathon. Use a clean modular monolith.
+* **AI-Generated Pricing:** Commercial risk. Prices must come directly from `product_catalogue.csv`.
+* **AI-Based KYC Decisions:** Compliance risk. Verification must use deterministic field comparisons and mock registry lookups.
+* **Four Separate Apps:** Duplicates code. Build one app with 4 configurable segment views.
+* **Claims of Live Government API Access:** Always clearly label mock GSTIN and Udyam lookups as simulated.
+* **Payment Gateways by Default:** The core business journey requires quote acceptance, KYC clearance, and order placement; do not block users on live payments.
