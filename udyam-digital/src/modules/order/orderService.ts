@@ -104,5 +104,24 @@ export class OrderService {
 
     return { order, milestones };
   }
+
+  static getOrders(businessId?: string): OrderRecord[] {
+    if (businessId) {
+      return queryAll<OrderRecord>(
+        `SELECT o.*, q.bundle_name, q.monthly_recurring_total, q.one_time_setup_total
+         FROM orders o
+         LEFT JOIN quotes q ON o.quote_id = q.id
+         WHERE o.business_id = ?
+         ORDER BY o.created_at DESC`,
+        [businessId]
+      );
+    }
+    return queryAll<OrderRecord>(
+      `SELECT o.*, q.bundle_name, q.monthly_recurring_total, q.one_time_setup_total
+       FROM orders o
+       LEFT JOIN quotes q ON o.quote_id = q.id
+       ORDER BY o.created_at DESC LIMIT 50`
+    );
+  }
 }
 

@@ -1,12 +1,14 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { SupportedLanguage, BusinessType, BusinessProfile } from '@/types';
+import { SupportedLanguage, BusinessType, BusinessProfile, UserRole } from '@/types';
 
 interface AppContextType {
   language: SupportedLanguage;
   setLanguage: (lang: SupportedLanguage) => void;
-  user: { id: string; mobile: string; role: string } | null;
+  userRole: UserRole;
+  setUserRole: (role: UserRole) => void;
+  user: { id: string; mobile: string; role: UserRole } | null;
   setUser: (u: any) => void;
   business: BusinessProfile | null;
   setBusiness: (b: BusinessProfile | null) => void;
@@ -20,7 +22,8 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [language, setLanguage] = useState<SupportedLanguage>('en');
-  const [user, setUser] = useState<{ id: string; mobile: string; role: string } | null>({
+  const [userRole, setUserRole] = useState<UserRole>('customer');
+  const [user, setUser] = useState<{ id: string; mobile: string; role: UserRole } | null>({
     id: 'U_KIRANA',
     mobile: '9876543210',
     role: 'customer'
@@ -41,14 +44,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     partner_code: 'PARTNER_RAJ01',
     created_at: new Date().toISOString()
   });
-  const [activeQuoteId, setActiveQuoteId] = useState<string | null>(null);
-  const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
+  const [activeQuoteId, setActiveQuoteId] = useState<string | null>('Q_KIRANA_01');
+  const [activeOrderId, setActiveOrderId] = useState<string | null>('ORD_KIRANA99');
 
   return (
     <AppContext.Provider
       value={{
         language,
         setLanguage,
+        userRole,
+        setUserRole,
         user,
         setUser,
         business,
@@ -71,4 +76,3 @@ export function useApp() {
   }
   return context;
 }
-
