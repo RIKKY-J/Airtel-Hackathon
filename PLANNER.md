@@ -1,8 +1,8 @@
 # Project Udyam Digital — Software Engineering Blueprint & Planner
 
 **Target:** Enterprise MSME Acquisition, Smart KYC & Fulfilment Platform  
-**Language & Tech Stack:** 100% TypeScript (Node.js + React)  
-**Version:** 2.0.0  
+**Language & Tech Stack:** 100% TypeScript (Next.js + Node.js/Express)  
+**Version:** 2.1.0  
 **Focus:** Pure Software Engineering & Implementation  
 
 ---
@@ -12,22 +12,22 @@
 | Layer | Technology | Purpose |
 |---|---|---|
 | **Language** | **TypeScript (v5.x)** (strict mode) | End-to-end type safety between frontend, backend, and database models |
-| **Backend Runtime** | **Node.js (v22+)** with `tsx` / `ts-node` | High-performance async modular API runtime |
-| **Backend Framework** | **Express.js (TypeScript)** / `cors` / `dotenv` | REST API routing, middleware, error handling |
-| **Database** | **SQLite** (`better-sqlite3` or `sqlite3`) | Fast, zero-config relational store seeded directly from hackathon CSVs |
-| **Data Ingestion (ETL)** | `csv-parser` / TypeScript script | Loads `product_catalogue.csv`, `mock_gstin_registry.csv`, `mock_udyam_registry.csv`, `smb_leads.csv` |
-| **Frontend Framework** | **React (v18+) + Vite (TypeScript)** | Mobile-first responsive single-page web app |
-| **Styling & Icons** | **Tailwind CSS + Lucide React** | Segment-adaptive UI theme engine, clean telecom-grade dashboard |
-| **State Management** | **React Context / Zustand + TanStack Query** | Client-side session, cart/quote state, and API caching |
-| **Document/OCR Engine** | Custom TypeScript Rule Engine + Canvas/Tesseract.js | Document parsing, checksum check, date recency, mock registry validator |
+| **Frontend Framework** | **Next.js (v14/15 App Router, TypeScript)** | High-performance mobile-first web app, React Server Components, optimized client hydration |
+| **Styling & Icons** | **Tailwind CSS + Lucide React** | Segment-adaptive UI theme engine, clean telecom-grade mobile-responsive layout |
+| **Frontend State** | **Zustand / React Context + TanStack Query** | Client-side session, cart/quote state, and API caching |
+| **Backend Runtime** | **Node.js (v22+)** with `tsx` | High-performance async modular API runtime |
+| **Backend Framework** | **Express.js (TypeScript)** / `cors` / `dotenv` | Modular REST API routing, middleware, error handling |
+| **Database** | **SQLite** (`better-sqlite3`) | Fast, zero-config relational store seeded directly from hackathon CSVs |
+| **Data Ingestion (ETL)** | `csv-parser` / TypeScript script | Ingests `product_catalogue.csv`, `mock_gstin_registry.csv`, `mock_udyam_registry.csv`, `smb_leads.csv` |
+| **Document/OCR Engine** | Custom TypeScript Rule Engine + Canvas/Tesseract.js | Document parsing, checksum validation, date recency, mock registry validator |
 
 ---
 
-## 2. Repository & Monorepo Architecture
+## 2. Repository Architecture
 
 ```
 Airtel-hackathon/
-├── package.json                   # Root workspace scripts (concurrently run client & server)
+├── package.json                   # Root scripts (run frontend & backend concurrently)
 ├── tsconfig.json                  # Root TypeScript configuration
 ├── .gitignore
 ├── YTL_TrackA_Udyam_Digital_Data/ # Hackathon test pack (CSVs & KYC specimen images)
@@ -42,6 +42,7 @@ Airtel-hackathon/
 │
 ├── server/                        # Backend TypeScript Express Application
 │   ├── tsconfig.json
+│   ├── package.json
 │   ├── src/
 │   │   ├── db/
 │   │   │   ├── schema.sql         # Relational database schema
@@ -63,24 +64,38 @@ Airtel-hackathon/
 │   │   │   └── analyticsRoutes.ts # 5,000-lead funnel & CAC engine
 │   │   └── server.ts              # Express app bootstrap & middleware
 │
-└── client/                        # Frontend Vite + React + TypeScript App
+└── frontend/                      # Next.js App Router (TypeScript + Tailwind)
+    ├── package.json
     ├── tsconfig.json
-    ├── vite.config.ts
-    ├── index.html
-    └── src/
-        ├── api/                   # Typed API client fetchers
-        ├── components/
-        │   ├── layout/            # Mobile frame, Navbar, Language Switcher (EN/HI)
-        │   ├── dashboard/         # Segment-adaptive cards (Micro/Office/Multi/Mfg)
-        │   ├── advisor/           # Interactive question wizard & bundle cards
-        │   ├── quote/             # Transparent pricing & dynamic add-on toggles
-        │   ├── kyc/               # DPDP consent modal & document upload
-        │   ├── tracker/           # Visual milestone timeline & SLA countdown
-        │   └── partner/           # Field partner lead recovery console
-        ├── context/               # AuthContext, BusinessContext, LanguageContext
-        ├── types/                 # Frontend view models
-        ├── App.tsx                # Routing & layout wrapper
-        └── main.tsx
+    ├── next.config.mjs
+    ├── tailwind.config.ts
+    ├── src/
+    │   ├── app/                   # Next.js App Router pages
+    │   │   ├── layout.tsx         # Root layout with language & theme providers
+    │   │   ├── page.tsx           # Landing & Mobile Login (OTP verification)
+    │   │   ├── dashboard/         # Segment-adaptive dashboard (Kirana/Clinic/Multi/Mfg)
+    │   │   │   └── page.tsx
+    │   │   ├── advisor/           # Interactive question wizard & bundle selector
+    │   │   │   └── page.tsx
+    │   │   ├── quote/             # Transparent pricing breakdown & live add-on toggles
+    │   │   │   └── page.tsx
+    │   │   ├── kyc/               # DPDP consent modal & document upload
+    │   │   │   └── page.tsx
+    │   │   ├── tracker/           # Live order activation timeline & SLA countdown
+    │   │   │   └── page.tsx
+    │   │   ├── partner/           # Field partner lead recovery & review console
+    │   │   │   └── page.tsx
+    │   │   └── analytics/         # 5,000-lead funnel metrics & CAC calculator
+    │   │       └── page.tsx
+    │   ├── components/
+    │   │   ├── layout/            # MobileFrame, Header, Navbar, LanguageSwitch (EN/HI)
+    │   │   ├── ui/                # Buttons, Modals, Badges, Sliders, Cards
+    │   │   ├── dashboard/         # Segment cards (Kirana, Clinic, Multi-site, Factory)
+    │   │   ├── advisor/           # Dialogue bubble, Need options, Bundle summary
+    │   │   ├── kyc/               # DPDP consent checkbox, Specimen picker (K01–K12)
+    │   │   └── tracker/           # Milestone step indicators, SLA badge
+    │   ├── lib/                   # API client fetchers, shared constants
+    │   └── context/               # LanguageContext (EN/HI), BusinessContext, AuthContext
 ```
 
 ---
@@ -351,8 +366,8 @@ Evaluates applicant documents against the mock registries and specimen rules:
 ## 7. Step-by-Step Developer Sprint Checklist
 
 ### Sprint 1: TypeScript Monorepo & Backend Core Setup
-- [ ] Initialize `package.json` with npm workspaces (`server`, `client`, `shared`).
-- [ ] Configure `tsconfig.json` across shared, server, and client.
+- [ ] Initialize `package.json` with npm workspaces (`server`, `frontend`, `shared`).
+- [ ] Configure `tsconfig.json` across shared, server, and frontend.
 - [ ] Implement `server/src/db/seed.ts` using `better-sqlite3` to ingest the 4 CSV files into SQLite.
 - [ ] Build Express server with typed middleware, CORS, and request logging.
 
@@ -378,20 +393,22 @@ Evaluates applicant documents against the mock registries and specimen rules:
 - [ ] Implement partner referral code attribution to prevent channel conflict.
 - [ ] Build simulated push notification dispatcher (SMS / WhatsApp preview).
 
-### Sprint 5: Frontend Vite+React Application
-- [ ] Scaffold `client/` using Vite + React + TypeScript + Tailwind CSS.
-- [ ] Build language switch context (English / Hindi हिन्दी).
-- [ ] Create Segment Dashboard with cards adapted to selected business type.
-- [ ] Build Advisor Question Wizard and Interactive Bundle Quote view.
-- [ ] Build Smart KYC screen with explicit DPDP consent checkboxes and specimen selector (K01–K12).
-- [ ] Build Live Order Timeline with SLA countdown and Partner Recovery view.
+### Sprint 5: Frontend Next.js App Router Application
+- [ ] Initialize `frontend/` using Next.js (App Router, TypeScript, Tailwind CSS, Lucide React).
+- [ ] Implement layout with language switch context (English / Hindi हिन्दी).
+- [ ] Build `/dashboard` with dynamic cards adapted to the business segment (Kirana vs Clinic vs Multi-site vs Factory).
+- [ ] Build `/advisor` question wizard with plain-language outcome bundle recommendations.
+- [ ] Build `/quote` page with transparent breakdown and dynamic add-on recalculation.
+- [ ] Build `/kyc` page with DPDP unbundled consent and specimen applicant selector (K01–K12).
+- [ ] Build `/tracker` page with interactive milestone progress and SLA countdown.
+- [ ] Build `/partner` page for stalled checkout recovery and lead attribution.
 
 ---
 
 ## 8. Development & Run Commands
 
 ```bash
-# 1. Install all dependencies (Root, Server, Client)
+# 1. Install all dependencies (Root, Server, Frontend)
 npm install
 
 # 2. Seed Database from CSV Files
@@ -400,9 +417,9 @@ npm run db:seed
 # 3. Start Backend Development Server (TypeScript / tsx)
 npm run dev:server    # Runs on http://localhost:5000
 
-# 4. Start Frontend Client (Vite / React / TypeScript)
-npm run dev:client    # Runs on http://localhost:5173
+# 4. Start Next.js Frontend (App Router / TypeScript)
+npm run dev:frontend  # Runs on http://localhost:3000
 
-# 5. Run Concurrently (Both Server & Client)
+# 5. Run Concurrently (Both Backend & Next.js Frontend)
 npm run dev
 ```
